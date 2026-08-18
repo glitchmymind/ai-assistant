@@ -83,7 +83,7 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(Spacing.sm))
         AppButton(
             text = if (uiState.isLoading) "Checking..." else "Refresh health",
-            onClick = viewModel::refresh,
+            onClick = { viewModel.onAction(HomeUiAction.Refresh) },
             enabled = !uiState.isLoading,
             modifier = Modifier.align(Alignment.Start),
         )
