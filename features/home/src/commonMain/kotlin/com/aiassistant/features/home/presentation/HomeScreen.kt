@@ -27,7 +27,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun HomeScreen(
     viewModel: HomeViewModel = koinViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier
@@ -56,35 +56,36 @@ fun HomeScreen(
                     style = MaterialTheme.typography.titleLarge,
                 )
 
-                when {
-                    uiState.isLoading && uiState.health == null -> LoadingContent()
-                    else -> {
-                        val health = uiState.health
+                state
+                    .onLoading { LoadingContent() }
+                    .onFailure {
                         StatusBadge(
-                            text = if (health?.isAvailable == true) "Available" else "Unavailable",
-                            isPositive = health?.isAvailable == true,
+                            text = "Unavailable",
+                            isPositive = false,
                         )
                         Text(
-                            text = "Version: ${health?.version ?: "—"}",
+                            text = "Version: —",
                             style = MaterialTheme.typography.bodyLarge,
                         )
-                        uiState.errorMessage?.let { message ->
-                            Text(
-                                text = message,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        }
                     }
-                }
+                    .onSuccess { available ->
+                        StatusBadge(
+                            text = "Available",
+                            isPositive = true,
+                        )
+                        Text(
+                            text = "Version: ${available.version}",
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
             }
         }
 
         Spacer(modifier = Modifier.height(Spacing.sm))
         AppButton(
-            text = if (uiState.isLoading) "Checking..." else "Refresh health",
+            text = if (state is HealthUiState.Loading) "Checking..." else "Refresh health",
             onClick = { viewModel.onAction(HomeUiAction.Refresh) },
-            enabled = !uiState.isLoading,
+            enabled = state !is HealthUiState.Loading,
             modifier = Modifier.align(Alignment.Start),
         )
     }

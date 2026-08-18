@@ -26,7 +26,7 @@ class HealthRoutesTest {
             }
         }
 
-        val response = client.get("/health")
+        val response = client.get("/api/v1/health")
         val body = response.body<HealthResponse>()
 
         assertEquals(HttpStatusCode.OK, response.status)

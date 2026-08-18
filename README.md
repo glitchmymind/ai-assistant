@@ -12,7 +12,7 @@ See the system diagram in [docs/architecture.md](docs/architecture.md#architectu
 
 - Compose Multiplatform app for Android, iOS, Desktop, and Web JS
 - Home screen checks API health
-- Ktor gateway with `GET /health`
+- Ktor gateway with `GET /api/v1/health`
 - PostgreSQL schema for `users`, `conversations`, `messages`
 - Agent contract in `server:agent`: `LanguageModel`, `LlmRequest`, `LlmResponse`, `Message`, `Role`
 
