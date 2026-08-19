@@ -5,6 +5,8 @@
 
 # Kotlin
 .kotlin/
+kotlin-js-store/**
+!kotlin-js-store/yarn.lock
 
 # Android / local machine
 local.properties
@@ -34,6 +36,11 @@ xcuserdata/
 *.dSYM
 DerivedData/
 Pods/
+
+# Python
+.venv/
+**/__pycache__/
+*.py[cod]
 
 # Secrets / env
 .env
