@@ -1,0 +1,7 @@
+{
+  "pythonVersion": "3.9",
+  "pythonPlatform": "Darwin",
+  "include": ["ai-lab"],
+  "venvPath": "ai-lab",
+  "venv": ".venv"
+}
