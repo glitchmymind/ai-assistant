@@ -4,6 +4,7 @@ import com.aiassistant.common.core.AppEnvironment
 import com.aiassistant.common.core.apiBaseUrl
 import com.aiassistant.common.network.createHttpClient
 import com.aiassistant.common.network.localLoopbackHost
+import com.aiassistant.features.conversation.di.conversationModule
 import com.aiassistant.features.home.di.homeModule
 import io.ktor.client.HttpClient
 import org.koin.core.context.startKoin
@@ -21,6 +22,7 @@ val networkModule: Module = module {
 val appModules: List<Module> = listOf(
     networkModule,
     homeModule,
+    conversationModule,
 )
 
 fun initKoin(
@@ -33,6 +35,7 @@ fun initKoin(
             module { single { environment } },
             networkModule,
             homeModule,
+            conversationModule,
         )
     }
 }

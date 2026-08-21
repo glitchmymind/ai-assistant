@@ -8,6 +8,7 @@ kotlin {
 
 dependencies {
     implementation(projects.server.core)
+    implementation(projects.server.application)
     implementation(projects.server.db)
     implementation(projects.server.network)
     implementation(projects.server.agent)

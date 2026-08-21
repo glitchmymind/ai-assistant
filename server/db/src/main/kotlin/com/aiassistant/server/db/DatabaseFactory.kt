@@ -3,9 +3,8 @@ package com.aiassistant.server.db
 import com.aiassistant.server.core.AppConfig
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
 object DatabaseFactory {
@@ -27,17 +26,19 @@ object DatabaseFactory {
         return Database.connect(hikari)
     }
 
-    fun createSchema() {
-        transaction {
-            SchemaUtils.create(Users, Conversations, Messages)
-            logger.info("PostgreSQL schema is ready")
-        }
+    fun migrate() {
+        Flyway.configure()
+            .dataSource(AppConfig.jdbcUrl, AppConfig.dbUser, AppConfig.dbPassword)
+            .locations("classpath:db/migration")
+            .load()
+            .migrate()
+        logger.info("PostgreSQL migrations are up to date")
     }
 
     fun init() {
         try {
             connect()
-            createSchema()
+            migrate()
         } catch (error: Exception) {
             logger.warn("Database is unavailable: ${error.message}")
         }

@@ -20,11 +20,13 @@ tasks.test {
 dependencies {
     implementation(projects.server.core)
     implementation(projects.server.di)
+    implementation(projects.server.application)
     implementation(projects.server.db)
     implementation(projects.server.network)
     implementation(projects.server.agent)
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.netty)
+    implementation(libs.ktor.server.call.id)
     implementation(libs.ktor.server.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.kotlinx.serialization.json)

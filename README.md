@@ -11,10 +11,17 @@ See the system diagram in [docs/architecture.md](docs/architecture.md#architectu
 ## Current status
 
 - Compose Multiplatform app for Android, iOS, Desktop, and Web JS
-- Home screen checks API health
-- Ktor gateway with `GET /api/v1/health`
+- Home screen checks API health and can create/load conversations
+- Ktor gateway with `GET /api/v1/health` and conversation endpoints
 - PostgreSQL schema for `users`, `conversations`, `messages`
 - Agent contract in `server:agent`: `LanguageModel`, `LlmRequest`, `LlmResponse`, `Message`, `Role`
+
+Credentials live in `.env`. Copy the template before running locally:
+
+```bash
+cp .env.example .env
+docker compose -f docker-compose.dev.yml up -d
+```
 
 Not implemented yet: LLM provider, RAG, Redis, MCP tools, chat API.
 
