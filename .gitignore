@@ -51,3 +51,4 @@ Pods/
 .DS_Store
 *.swp
 *~
+/.env.example

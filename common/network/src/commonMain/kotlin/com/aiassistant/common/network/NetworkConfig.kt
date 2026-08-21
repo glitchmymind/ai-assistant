@@ -5,6 +5,9 @@ import com.aiassistant.common.core.apiBaseUrl
 
 object NetworkConfig {
     const val HEALTH_PATH = "/api/v1/health"
+    const val CONVERSATIONS_PATH = "/api/v1/conversations"
+
+    fun conversationPath(id: String): String = "$CONVERSATIONS_PATH/$id"
 }
 
 fun defaultBaseUrl(

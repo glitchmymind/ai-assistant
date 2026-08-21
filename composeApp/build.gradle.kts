@@ -50,6 +50,7 @@ kotlin {
             implementation(projects.common.navigation)
             implementation(projects.common.uikit)
             implementation(projects.features.home)
+            implementation(projects.features.conversation)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)

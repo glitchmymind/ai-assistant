@@ -1,0 +1,15 @@
+package com.aiassistant.features.conversation.data.model
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class ConversationDto(
+    val id: String,
+    val title: String,
+    val createdAt: String,
+)
+
+@Serializable
+data class CreateConversationRequestDto(
+    val title: String,
+)

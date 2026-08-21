@@ -22,6 +22,7 @@ kotlin {
             implementation(projects.common.core)
             implementation(projects.common.network)
             implementation(projects.features.home)
+            implementation(projects.features.conversation)
             implementation(libs.koin.core)
             implementation(libs.ktor.client.core)
         }

@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,6 +24,7 @@ import com.aiassistant.common.uikit.components.AppButton
 import com.aiassistant.common.uikit.components.LoadingContent
 import com.aiassistant.common.uikit.components.StatusBadge
 import com.aiassistant.common.uikit.theme.Spacing
+import com.aiassistant.features.conversation.presentation.ConversationSection
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -33,6 +37,8 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .safeContentPadding()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
             .padding(Spacing.lg),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
@@ -41,7 +47,7 @@ fun HomeScreen(
             style = MaterialTheme.typography.headlineLarge,
         )
         Text(
-            text = "Check API availability and service version.",
+            text = "Check API availability and try conversations.",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
         )
@@ -56,7 +62,7 @@ fun HomeScreen(
                     style = MaterialTheme.typography.titleLarge,
                 )
 
-                state
+                state.health
                     .onLoading { LoadingContent() }
                     .onFailure {
                         StatusBadge(
@@ -81,12 +87,22 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(Spacing.sm))
         AppButton(
-            text = if (state is HealthUiState.Loading) "Checking..." else "Refresh health",
+            text = if (state.health is HealthUiState.Loading) "Checking..." else "Refresh health",
             onClick = { viewModel.onAction(HomeUiAction.Refresh) },
-            enabled = state !is HealthUiState.Loading,
+            enabled = state.health !is HealthUiState.Loading,
             modifier = Modifier.align(Alignment.Start),
         )
+
+        ConversationSection(
+            title = state.title,
+            conversationId = state.conversationId,
+            state = state.conversation,
+            onTitleChange = { viewModel.onAction(HomeUiAction.TitleChanged(it)) },
+            onIdChange = { viewModel.onAction(HomeUiAction.ConversationIdChanged(it)) },
+            onCreate = { viewModel.onAction(HomeUiAction.CreateConversation) },
+            onLoad = { viewModel.onAction(HomeUiAction.LoadConversation) },
+        )
+        Spacer(modifier = Modifier.height(Spacing.sm))
     }
 }
