@@ -13,3 +13,9 @@ data class ConversationDto(
 data class CreateConversationRequestDto(
     val title: String,
 )
+
+@Serializable
+data class ApiErrorDto(
+    val error: String,
+    val requestId: String? = null,
+)

@@ -15,6 +15,9 @@ object Conversations : Table("conversations") {
     val id = uuid("id").databaseGenerated()
     val title = varchar("title", 200)
     val createdAt = timestampWithTimeZone("created_at").databaseGenerated()
+    val idempotencyKey = uuid("idempotency_key")
+        .nullable()
+        .uniqueIndex("conversations_idempotency_key_unique")
 
     override val primaryKey = PrimaryKey(id)
 }

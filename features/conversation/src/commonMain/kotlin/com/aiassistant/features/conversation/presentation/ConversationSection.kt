@@ -106,6 +106,8 @@ private fun ConversationError.toMessage(): String = when (this) {
     ConversationError.MalformedId -> "Malformed UUID"
     ConversationError.NotFound -> "Conversation doesn't exist"
     ConversationError.InvalidTitle -> "Invalid title"
+    ConversationError.MissingIdempotencyKey -> "Missing Idempotency-Key"
+    ConversationError.MalformedIdempotencyKey -> "Malformed Idempotency-Key"
     ConversationError.Server -> "Server error"
     ConversationError.Network -> "Network error"
 }

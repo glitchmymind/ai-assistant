@@ -1,5 +1,6 @@
 package com.aiassistant.server.network
 
+import com.aiassistant.server.core.ApiHeaders
 import com.aiassistant.server.core.TracingHeaders
 import com.aiassistant.server.core.TracingMdc
 import io.ktor.http.HttpHeaders
@@ -58,6 +59,7 @@ fun Application.configureNetwork() {
         allowMethod(HttpMethod.Delete)
         allowHeader(HttpHeaders.Authorization)
         allowHeader(HttpHeaders.ContentType)
+        allowHeader(ApiHeaders.IDEMPOTENCY_KEY)
         allowHeader(TracingHeaders.REQUEST_ID)
         allowHeader(TracingHeaders.TRACE_ID)
         allowHeader(TracingHeaders.TRACEPARENT)

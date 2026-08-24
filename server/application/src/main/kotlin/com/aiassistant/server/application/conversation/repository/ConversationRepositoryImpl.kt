@@ -1,6 +1,7 @@
 package com.aiassistant.server.application.conversation.repository
 
 import com.aiassistant.server.application.conversation.domain.Conversation
+import com.aiassistant.server.application.conversation.domain.ConversationInsert
 import com.aiassistant.server.application.conversation.domain.ConversationRepository
 import com.aiassistant.server.db.ConversationRow
 import com.aiassistant.server.db.Conversations
@@ -9,14 +10,30 @@ import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.insertReturning
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import java.sql.Connection
 import java.util.UUID
 
 class ConversationRepositoryImpl : ConversationRepository {
 
-    override suspend fun create(title: String): Conversation = dbQuery {
-        Conversations.insertReturning {
+    override suspend fun create(title: String, idempotencyKey: UUID): ConversationInsert = dbQuery(
+        transactionIsolation = Connection.TRANSACTION_READ_COMMITTED,
+    ) {
+        val inserted = Conversations.insertReturning(ignoreErrors = true) {
             it[Conversations.title] = title
-        }.single().toConversationRow().toDomain()
+            it[Conversations.idempotencyKey] = idempotencyKey
+        }.singleOrNull()
+
+        if (inserted != null) {
+            return@dbQuery ConversationInsert.Inserted(inserted.toConversationRow().toDomain())
+        }
+
+        val existing = Conversations
+            .selectAll()
+            .where { Conversations.idempotencyKey eq idempotencyKey }
+            .single()
+            .toConversationRow()
+            .toDomain()
+        ConversationInsert.AlreadyExists(existing)
     }
 
     override suspend fun findById(id: UUID): Conversation? = dbQuery {
@@ -28,8 +45,13 @@ class ConversationRepositoryImpl : ConversationRepository {
             ?.toDomain()
     }
 
-    private suspend fun <T> dbQuery(block: suspend () -> T): T =
-        newSuspendedTransaction(Dispatchers.IO) { block() }
+    private suspend fun <T> dbQuery(
+        transactionIsolation: Int? = null,
+        block: suspend () -> T,
+    ): T = newSuspendedTransaction(
+        context = Dispatchers.IO,
+        transactionIsolation = transactionIsolation,
+    ) { block() }
 }
 
 private fun ConversationRow.toDomain() = Conversation(

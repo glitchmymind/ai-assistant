@@ -1,6 +1,7 @@
 package com.aiassistant.features.conversation.data
 
 import com.aiassistant.features.conversation.data.mapper.ConversationMapper.toDomain
+import com.aiassistant.features.conversation.data.model.ApiErrorDto
 import com.aiassistant.features.conversation.data.model.ConversationDto
 import com.aiassistant.features.conversation.data.remote.ConversationRemoteDataSource
 import com.aiassistant.features.conversation.domain.ConversationRepository
@@ -12,22 +13,34 @@ import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
+@OptIn(ExperimentalUuidApi::class)
 class ConversationRepositoryImpl(
     private val remoteDataSource: ConversationRemoteDataSource,
 ) : ConversationRepository {
 
     override suspend fun create(title: String): ConversationResult<Conversation> {
-        return request(
-            execute = { remoteDataSource.create(title) },
-            mapStatus = { status ->
-                when (status) {
-                    HttpStatusCode.Created -> null
-                    HttpStatusCode.BadRequest -> ConversationError.InvalidTitle
-                    else -> ConversationError.Server
-                }
-            },
-        )
+        val idempotencyKey = Uuid.random().toString()
+        var lastResult: ConversationResult<Conversation> = ConversationResult.Failure(ConversationError.Network)
+        repeat(CREATE_ATTEMPTS) {
+            lastResult = request(
+                execute = { remoteDataSource.create(title, idempotencyKey) },
+                mapError = { response ->
+                    when (response.status) {
+                        HttpStatusCode.Created, HttpStatusCode.OK -> null
+                        HttpStatusCode.BadRequest -> mapCreateBadRequest(response)
+                        else -> ConversationError.Server
+                    }
+                },
+            )
+            val failure = lastResult as? ConversationResult.Failure
+            if (failure == null || failure.error != ConversationError.Network) {
+                return lastResult
+            }
+        }
+        return lastResult
     }
 
     override suspend fun get(id: String): ConversationResult<Conversation> {
@@ -36,8 +49,8 @@ class ConversationRepositoryImpl(
         }
         return request(
             execute = { remoteDataSource.get(id) },
-            mapStatus = { status ->
-                when (status) {
+            mapError = { response ->
+                when (response.status) {
                     HttpStatusCode.OK -> null
                     HttpStatusCode.BadRequest -> ConversationError.MalformedId
                     HttpStatusCode.NotFound -> ConversationError.NotFound
@@ -49,11 +62,11 @@ class ConversationRepositoryImpl(
 
     private suspend fun request(
         execute: suspend () -> HttpResponse,
-        mapStatus: (HttpStatusCode) -> ConversationError?,
+        mapError: suspend (HttpResponse) -> ConversationError?,
     ): ConversationResult<Conversation> {
         return try {
             val response = execute()
-            val error = mapStatus(response.status)
+            val error = mapError(response)
             if (error != null) {
                 ConversationResult.Failure(error)
             } else {
@@ -61,7 +74,7 @@ class ConversationRepositoryImpl(
             }
         } catch (error: ClientRequestException) {
             ConversationResult.Failure(
-                mapStatus(error.response.status) ?: ConversationError.Server,
+                mapError(error.response) ?: ConversationError.Server,
             )
         } catch (_: ServerResponseException) {
             ConversationResult.Failure(ConversationError.Server)
@@ -70,7 +83,18 @@ class ConversationRepositoryImpl(
         }
     }
 
+    private suspend fun mapCreateBadRequest(response: HttpResponse): ConversationError {
+        val message = runCatching { response.body<ApiErrorDto>().error }.getOrNull()
+        return when (message) {
+            "Invalid title" -> ConversationError.InvalidTitle
+            "Missing Idempotency-Key" -> ConversationError.MissingIdempotencyKey
+            "Malformed Idempotency-Key" -> ConversationError.MalformedIdempotencyKey
+            else -> ConversationError.Server
+        }
+    }
+
     private companion object {
+        const val CREATE_ATTEMPTS = 3
         val UUID_PATTERN = Regex(
             "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
         )

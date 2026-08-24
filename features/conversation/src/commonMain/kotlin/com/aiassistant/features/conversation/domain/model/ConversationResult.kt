@@ -4,6 +4,8 @@ sealed interface ConversationError {
     data object MalformedId : ConversationError
     data object NotFound : ConversationError
     data object InvalidTitle : ConversationError
+    data object MissingIdempotencyKey : ConversationError
+    data object MalformedIdempotencyKey : ConversationError
     data object Server : ConversationError
     data object Network : ConversationError
 }
