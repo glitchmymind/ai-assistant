@@ -5,8 +5,14 @@ import com.aiassistant.server.application.conversation.CreateConversationResult
 import com.aiassistant.server.application.conversation.CreateConversationUseCase
 import com.aiassistant.server.application.conversation.GetConversationResult
 import com.aiassistant.server.application.conversation.GetConversationUseCase
+import com.aiassistant.server.application.conversation.ListConversationsUseCase
+import com.aiassistant.server.application.conversation.UpdateConversationCommand
+import com.aiassistant.server.application.conversation.UpdateConversationResult
+import com.aiassistant.server.application.conversation.UpdateConversationUseCase
 import com.aiassistant.server.core.ApiHeaders
 import com.aiassistant.server.gateway.CreateConversationRequest
+import com.aiassistant.server.gateway.UpdateConversationRequest
+import com.aiassistant.server.gateway.toListResponse
 import com.aiassistant.server.gateway.toResponse
 import com.aiassistant.server.network.ErrorResponse
 import io.ktor.http.HttpStatusCode
@@ -16,13 +22,16 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import io.ktor.server.routing.patch
 import io.ktor.server.routing.post
 import org.koin.ktor.ext.getKoin
 import java.util.UUID
 
 fun Route.conversationRoutes(
     createConversation: CreateConversationUseCase? = null,
+    listConversations: ListConversationsUseCase? = null,
     getConversation: GetConversationUseCase? = null,
+    updateConversation: UpdateConversationUseCase? = null,
 ) {
     post("/conversations") {
         val rawKey = call.request.header(ApiHeaders.IDEMPOTENCY_KEY)
@@ -76,6 +85,11 @@ fun Route.conversationRoutes(
         }
     }
 
+    get("/conversations") {
+        val useCase = listConversations ?: call.application.getKoin().get()
+        call.respond(HttpStatusCode.OK, useCase().toListResponse())
+    }
+
     get("/conversations/{id}") {
         val useCase = getConversation ?: call.application.getKoin().get()
         val rawId = call.parameters["id"].orEmpty()
@@ -100,6 +114,44 @@ fun Route.conversationRoutes(
                 HttpStatusCode.NotFound,
                 ErrorResponse(
                     error = "Conversation not found",
+                    requestId = call.callId,
+                ),
+            )
+        }
+    }
+
+    patch("/conversations/{id}") {
+        val useCase = updateConversation ?: call.application.getKoin().get()
+        val rawId = call.parameters["id"].orEmpty()
+        val id = rawId.toUuidOrNull()
+        if (id == null) {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                ErrorResponse(
+                    error = "Malformed UUID",
+                    requestId = call.callId,
+                ),
+            )
+            return@patch
+        }
+
+        val request = call.receive<UpdateConversationRequest>()
+        when (val result = useCase(UpdateConversationCommand(id = id, title = request.title))) {
+            is UpdateConversationResult.Updated -> call.respond(
+                HttpStatusCode.OK,
+                result.conversation.toResponse(),
+            )
+            UpdateConversationResult.NotFound -> call.respond(
+                HttpStatusCode.NotFound,
+                ErrorResponse(
+                    error = "Conversation not found",
+                    requestId = call.callId,
+                ),
+            )
+            UpdateConversationResult.InvalidTitle -> call.respond(
+                HttpStatusCode.BadRequest,
+                ErrorResponse(
+                    error = "Invalid title",
                     requestId = call.callId,
                 ),
             )

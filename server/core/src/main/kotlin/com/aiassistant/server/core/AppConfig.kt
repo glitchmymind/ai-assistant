@@ -22,6 +22,9 @@ object AppConfig {
         )
     }
 
+    val redisHost: String by lazy { env("REDIS_HOST", "localhost") }
+    val redisPort: Int by lazy { env("REDIS_PORT", "6379").toInt() }
+
     private fun env(key: String, default: String): String {
         return System.getenv(key) ?: fileValues[key] ?: default
     }

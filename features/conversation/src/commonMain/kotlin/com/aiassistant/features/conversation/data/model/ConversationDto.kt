@@ -10,7 +10,17 @@ data class ConversationDto(
 )
 
 @Serializable
+data class ConversationListDto(
+    val conversations: List<ConversationDto>,
+)
+
+@Serializable
 data class CreateConversationRequestDto(
+    val title: String,
+)
+
+@Serializable
+data class UpdateConversationRequestDto(
     val title: String,
 )
 

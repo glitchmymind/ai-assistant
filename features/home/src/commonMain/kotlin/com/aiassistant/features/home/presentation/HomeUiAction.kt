@@ -8,4 +8,6 @@ sealed interface HomeUiAction : UiAction {
     data class ConversationIdChanged(val value: String) : HomeUiAction
     data object CreateConversation : HomeUiAction
     data object LoadConversation : HomeUiAction
+    data object LoadAllConversations : HomeUiAction
+    data object UpdateConversation : HomeUiAction
 }

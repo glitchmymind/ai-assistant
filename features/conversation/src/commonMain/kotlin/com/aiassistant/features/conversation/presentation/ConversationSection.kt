@@ -1,7 +1,9 @@
 package com.aiassistant.features.conversation.presentation
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
@@ -14,6 +16,7 @@ import com.aiassistant.common.uikit.components.AppButton
 import com.aiassistant.common.uikit.components.LoadingContent
 import com.aiassistant.common.uikit.components.StatusBadge
 import com.aiassistant.common.uikit.theme.Spacing
+import com.aiassistant.features.conversation.domain.model.Conversation
 import com.aiassistant.features.conversation.domain.model.ConversationError
 import com.aiassistant.features.conversation.presentation.model.mvi.ConversationUiState
 
@@ -22,10 +25,15 @@ fun ConversationSection(
     title: String,
     conversationId: String,
     state: ConversationUiState,
+    conversations: List<Conversation>,
+    conversationsLoaded: Boolean,
     onTitleChange: (String) -> Unit,
     onIdChange: (String) -> Unit,
     onCreate: () -> Unit,
     onLoad: () -> Unit,
+    onLoadAll: () -> Unit,
+    onUpdate: () -> Unit,
+    onSelectConversation: (Conversation) -> Unit,
 ) {
     val isBusy = state is ConversationUiState.Loading
 
@@ -39,7 +47,7 @@ fun ConversationSection(
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                text = "Create a conversation or look one up by id.",
+                text = "Create, load one by id, update a title, or load all conversations.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
             )
@@ -66,11 +74,51 @@ fun ConversationSection(
                 singleLine = true,
                 enabled = !isBusy,
             )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                AppButton(
+                    text = "Load",
+                    onClick = onLoad,
+                    enabled = !isBusy && conversationId.isNotBlank(),
+                    modifier = Modifier.weight(1f),
+                )
+                AppButton(
+                    text = "Update",
+                    onClick = onUpdate,
+                    enabled = !isBusy && conversationId.isNotBlank() && title.isNotBlank(),
+                    modifier = Modifier.weight(1f),
+                )
+            }
             AppButton(
-                text = "Load",
-                onClick = onLoad,
-                enabled = !isBusy && conversationId.isNotBlank(),
+                text = "Load all",
+                onClick = onLoadAll,
+                enabled = !isBusy,
             )
+
+            if (conversationsLoaded || conversations.isNotEmpty()) {
+                Text(
+                    text = "All conversations",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                if (conversations.isEmpty()) {
+                    Text(
+                        text = "No conversations yet.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
+                    )
+                } else {
+                    conversations.forEach { conversation ->
+                        ConversationListItem(
+                            conversation = conversation,
+                            selected = conversation.id == conversationId,
+                            enabled = !isBusy,
+                            onClick = { onSelectConversation(conversation) },
+                        )
+                    }
+                }
+            }
 
             when (val current = state) {
                 ConversationUiState.Idle -> Unit
@@ -97,6 +145,42 @@ fun ConversationSection(
                         style = MaterialTheme.typography.bodyLarge,
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConversationListItem(
+    conversation: Conversation,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick),
+    ) {
+        Column(
+            modifier = Modifier.padding(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            Text(
+                text = conversation.title,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = conversation.id,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
+            )
+            if (selected) {
+                Text(
+                    text = "Selected",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
         }
     }

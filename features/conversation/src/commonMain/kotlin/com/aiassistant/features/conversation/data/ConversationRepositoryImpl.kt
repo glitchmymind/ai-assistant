@@ -3,6 +3,7 @@ package com.aiassistant.features.conversation.data
 import com.aiassistant.features.conversation.data.mapper.ConversationMapper.toDomain
 import com.aiassistant.features.conversation.data.model.ApiErrorDto
 import com.aiassistant.features.conversation.data.model.ConversationDto
+import com.aiassistant.features.conversation.data.model.ConversationListDto
 import com.aiassistant.features.conversation.data.remote.ConversationRemoteDataSource
 import com.aiassistant.features.conversation.domain.ConversationRepository
 import com.aiassistant.features.conversation.domain.model.Conversation
@@ -34,6 +35,7 @@ class ConversationRepositoryImpl(
                         else -> ConversationError.Server
                     }
                 },
+                parse = { response -> response.body<ConversationDto>().toDomain() },
             )
             val failure = lastResult as? ConversationResult.Failure
             if (failure == null || failure.error != ConversationError.Network) {
@@ -57,20 +59,55 @@ class ConversationRepositoryImpl(
                     else -> ConversationError.Server
                 }
             },
+            parse = { response -> response.body<ConversationDto>().toDomain() },
         )
     }
 
-    private suspend fun request(
+    override suspend fun list(): ConversationResult<List<Conversation>> {
+        return request(
+            execute = { remoteDataSource.list() },
+            mapError = { response ->
+                when (response.status) {
+                    HttpStatusCode.OK -> null
+                    else -> ConversationError.Server
+                }
+            },
+            parse = { response ->
+                response.body<ConversationListDto>().conversations.map { it.toDomain() }
+            },
+        )
+    }
+
+    override suspend fun update(id: String, title: String): ConversationResult<Conversation> {
+        if (!UUID_PATTERN.matches(id)) {
+            return ConversationResult.Failure(ConversationError.MalformedId)
+        }
+        return request(
+            execute = { remoteDataSource.update(id, title) },
+            mapError = { response ->
+                when (response.status) {
+                    HttpStatusCode.OK -> null
+                    HttpStatusCode.BadRequest -> mapUpdateBadRequest(response)
+                    HttpStatusCode.NotFound -> ConversationError.NotFound
+                    else -> ConversationError.Server
+                }
+            },
+            parse = { response -> response.body<ConversationDto>().toDomain() },
+        )
+    }
+
+    private suspend fun <T> request(
         execute: suspend () -> HttpResponse,
         mapError: suspend (HttpResponse) -> ConversationError?,
-    ): ConversationResult<Conversation> {
+        parse: suspend (HttpResponse) -> T,
+    ): ConversationResult<T> {
         return try {
             val response = execute()
             val error = mapError(response)
             if (error != null) {
                 ConversationResult.Failure(error)
             } else {
-                ConversationResult.Success(response.body<ConversationDto>().toDomain())
+                ConversationResult.Success(parse(response))
             }
         } catch (error: ClientRequestException) {
             ConversationResult.Failure(
@@ -89,6 +126,15 @@ class ConversationRepositoryImpl(
             "Invalid title" -> ConversationError.InvalidTitle
             "Missing Idempotency-Key" -> ConversationError.MissingIdempotencyKey
             "Malformed Idempotency-Key" -> ConversationError.MalformedIdempotencyKey
+            else -> ConversationError.Server
+        }
+    }
+
+    private suspend fun mapUpdateBadRequest(response: HttpResponse): ConversationError {
+        val message = runCatching { response.body<ApiErrorDto>().error }.getOrNull()
+        return when (message) {
+            "Invalid title" -> ConversationError.InvalidTitle
+            "Malformed UUID" -> ConversationError.MalformedId
             else -> ConversationError.Server
         }
     }

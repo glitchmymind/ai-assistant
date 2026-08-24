@@ -11,8 +11,17 @@ data class ConversationResponse(
     val createdAt: String,
 )
 
+@Serializable
+data class ConversationListResponse(
+    val conversations: List<ConversationResponse>,
+)
+
 fun Conversation.toResponse(): ConversationResponse = ConversationResponse(
     id = id.toString(),
     title = title,
     createdAt = DateTimeFormatter.ISO_INSTANT.format(createdAt),
+)
+
+fun List<Conversation>.toListResponse(): ConversationListResponse = ConversationListResponse(
+    conversations = map { it.toResponse() },
 )

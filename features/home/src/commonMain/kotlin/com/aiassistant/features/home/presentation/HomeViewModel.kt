@@ -3,12 +3,12 @@ package com.aiassistant.features.home.presentation
 import androidx.lifecycle.viewModelScope
 import com.aiassistant.common.core.MviViewModel
 import com.aiassistant.features.conversation.domain.ConversationRepository
+import com.aiassistant.features.conversation.domain.model.Conversation
 import com.aiassistant.features.conversation.domain.model.ConversationResult
 import com.aiassistant.features.conversation.presentation.model.mvi.ConversationUiState
 import com.aiassistant.features.home.domain.CheckHealthUseCase
 import com.aiassistant.features.home.domain.SystemHealthResult
 import kotlinx.coroutines.launch
-import kotlin.String
 
 class HomeViewModel(
     private val checkHealthUseCase: CheckHealthUseCase,
@@ -33,6 +33,8 @@ class HomeViewModel(
             is HomeUiAction.ConversationIdChanged -> updateState { copy(conversationId = action.value) }
             HomeUiAction.CreateConversation -> createConversation()
             HomeUiAction.LoadConversation -> loadConversation()
+            HomeUiAction.LoadAllConversations -> listConversations()
+            HomeUiAction.UpdateConversation -> updateConversation()
         }
     }
 
@@ -62,6 +64,7 @@ class HomeViewModel(
                         conversation = ConversationUiState.Loaded(result.value),
                         title = result.value.title,
                         conversationId = result.value.id,
+                        conversations = conversations.upsert(result.value),
                     )
                 }
 
@@ -82,6 +85,7 @@ class HomeViewModel(
                         conversation = ConversationUiState.Loaded(result.value),
                         title = result.value.title,
                         conversationId = result.value.id,
+                        conversations = conversations.upsert(result.value),
                     )
                 }
 
@@ -90,5 +94,52 @@ class HomeViewModel(
                 }
             }
         }
+    }
+
+    private fun updateConversation() {
+        val id = uiStateValue.conversationId.trim()
+        val title = uiStateValue.title
+        viewModelScope.launch {
+            updateState { copy(conversation = ConversationUiState.Loading) }
+            when (val result = conversationRepository.update(id, title)) {
+                is ConversationResult.Success -> updateState {
+                    copy(
+                        conversation = ConversationUiState.Loaded(result.value),
+                        title = result.value.title,
+                        conversationId = result.value.id,
+                        conversations = conversations.upsert(result.value),
+                    )
+                }
+
+                is ConversationResult.Failure -> updateState {
+                    copy(conversation = ConversationUiState.Failed(result.error))
+                }
+            }
+        }
+    }
+
+    private fun listConversations() {
+        val previous = uiStateValue.conversation
+        viewModelScope.launch {
+            updateState { copy(conversation = ConversationUiState.Loading) }
+            when (val result = conversationRepository.list()) {
+                is ConversationResult.Success -> updateState {
+                    copy(
+                        conversations = result.value,
+                        conversationsLoaded = true,
+                        conversation = previous.takeIf { it is ConversationUiState.Loaded }
+                            ?: ConversationUiState.Idle,
+                    )
+                }
+
+                is ConversationResult.Failure -> updateState {
+                    copy(conversation = ConversationUiState.Failed(result.error))
+                }
+            }
+        }
+    }
+
+    private fun List<Conversation>.upsert(conversation: Conversation): List<Conversation> {
+        return listOf(conversation) + filterNot { it.id == conversation.id }
     }
 }

@@ -19,6 +19,7 @@ class ConversationViewModel(
         when (action) {
             is ConversationUiAction.Create -> create(action.title)
             is ConversationUiAction.Load -> load(action.id)
+            is ConversationUiAction.Update -> update(action.id, action.title)
         }
     }
 
@@ -34,6 +35,14 @@ class ConversationViewModel(
         viewModelScope.launch {
             updateState { ConversationUiState.Loading }
             val result = conversationRepository.get(id)
+            updateState { result.toUiState() }
+        }
+    }
+
+    private fun update(id: String, title: String) {
+        viewModelScope.launch {
+            updateState { ConversationUiState.Loading }
+            val result = conversationRepository.update(id, title)
             updateState { result.toUiState() }
         }
     }

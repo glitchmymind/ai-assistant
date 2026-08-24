@@ -98,10 +98,18 @@ fun HomeScreen(
             title = state.title,
             conversationId = state.conversationId,
             state = state.conversation,
+            conversations = state.conversations,
+            conversationsLoaded = state.conversationsLoaded,
             onTitleChange = { viewModel.onAction(HomeUiAction.TitleChanged(it)) },
             onIdChange = { viewModel.onAction(HomeUiAction.ConversationIdChanged(it)) },
             onCreate = { viewModel.onAction(HomeUiAction.CreateConversation) },
             onLoad = { viewModel.onAction(HomeUiAction.LoadConversation) },
+            onLoadAll = { viewModel.onAction(HomeUiAction.LoadAllConversations) },
+            onUpdate = { viewModel.onAction(HomeUiAction.UpdateConversation) },
+            onSelectConversation = { conversation ->
+                viewModel.onAction(HomeUiAction.TitleChanged(conversation.title))
+                viewModel.onAction(HomeUiAction.ConversationIdChanged(conversation.id))
+            },
         )
         Spacer(modifier = Modifier.height(Spacing.sm))
     }

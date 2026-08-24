@@ -7,9 +7,11 @@ import com.aiassistant.server.db.ConversationRow
 import com.aiassistant.server.db.Conversations
 import com.aiassistant.server.db.toConversationRow
 import kotlinx.coroutines.Dispatchers
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.insertReturning
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.jetbrains.exposed.sql.update
 import java.sql.Connection
 import java.util.UUID
 
@@ -43,6 +45,28 @@ class ConversationRepositoryImpl : ConversationRepository {
             .singleOrNull()
             ?.toConversationRow()
             ?.toDomain()
+    }
+
+    override suspend fun findAll(): List<Conversation> = dbQuery {
+        Conversations
+            .selectAll()
+            .orderBy(Conversations.createdAt to SortOrder.DESC)
+            .map { it.toConversationRow().toDomain() }
+    }
+
+    override suspend fun update(id: UUID, title: String): Conversation? = dbQuery {
+        val updated = Conversations.update({ Conversations.id eq id }) {
+            it[Conversations.title] = title
+        }
+        if (updated == 0) {
+            return@dbQuery null
+        }
+        Conversations
+            .selectAll()
+            .where { Conversations.id eq id }
+            .single()
+            .toConversationRow()
+            .toDomain()
     }
 
     private suspend fun <T> dbQuery(
