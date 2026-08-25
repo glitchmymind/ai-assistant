@@ -19,6 +19,7 @@ dependencies {
     implementation(libs.exposed.java.time)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kafka.clients)
     implementation(libs.lettuce.core)
     implementation(libs.logback.classic)
 

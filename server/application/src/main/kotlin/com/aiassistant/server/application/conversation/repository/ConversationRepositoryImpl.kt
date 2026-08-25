@@ -3,6 +3,8 @@ package com.aiassistant.server.application.conversation.repository
 import com.aiassistant.server.application.conversation.domain.Conversation
 import com.aiassistant.server.application.conversation.domain.ConversationInsert
 import com.aiassistant.server.application.conversation.domain.ConversationRepository
+import com.aiassistant.server.application.conversation.event.toCreatedEvent
+import com.aiassistant.server.application.outbox.OutboxRepository
 import com.aiassistant.server.db.ConversationRow
 import com.aiassistant.server.db.Conversations
 import com.aiassistant.server.db.toConversationRow
@@ -15,27 +17,34 @@ import org.jetbrains.exposed.sql.update
 import java.sql.Connection
 import java.util.UUID
 
-class ConversationRepositoryImpl : ConversationRepository {
+class ConversationRepositoryImpl(
+    private val outboxRepository: OutboxRepository,
+) : ConversationRepository {
 
     override suspend fun create(title: String, idempotencyKey: UUID): ConversationInsert = dbQuery(
         transactionIsolation = Connection.TRANSACTION_READ_COMMITTED,
     ) {
-        val inserted = Conversations.insertReturning(ignoreErrors = true) {
-            it[Conversations.title] = title
-            it[Conversations.idempotencyKey] = idempotencyKey
-        }.singleOrNull()
-
-        if (inserted != null) {
-            return@dbQuery ConversationInsert.Inserted(inserted.toConversationRow().toDomain())
-        }
-
-        val existing = Conversations
-            .selectAll()
-            .where { Conversations.idempotencyKey eq idempotencyKey }
-            .single()
-            .toConversationRow()
-            .toDomain()
-        ConversationInsert.AlreadyExists(existing)
+        writeCreatedConversation(
+            title = title,
+            idempotencyKey = idempotencyKey,
+            insertConversation = { normalizedTitle, key ->
+                Conversations.insertReturning(ignoreErrors = true) {
+                    it[Conversations.title] = normalizedTitle
+                    it[Conversations.idempotencyKey] = key
+                }.singleOrNull()?.toConversationRow()?.toDomain()
+            },
+            insertOutbox = { conversation ->
+                outboxRepository.insert(conversation.toCreatedEvent())
+            },
+            findExisting = { key ->
+                Conversations
+                    .selectAll()
+                    .where { Conversations.idempotencyKey eq key }
+                    .single()
+                    .toConversationRow()
+                    .toDomain()
+            },
+        )
     }
 
     override suspend fun findById(id: UUID): Conversation? = dbQuery {
@@ -76,6 +85,19 @@ class ConversationRepositoryImpl : ConversationRepository {
         context = Dispatchers.IO,
         transactionIsolation = transactionIsolation,
     ) { block() }
+}
+
+internal suspend fun writeCreatedConversation(
+    title: String,
+    idempotencyKey: UUID,
+    insertConversation: suspend (title: String, idempotencyKey: UUID) -> Conversation?,
+    insertOutbox: suspend (Conversation) -> Unit,
+    findExisting: suspend (idempotencyKey: UUID) -> Conversation,
+): ConversationInsert {
+    val inserted = insertConversation(title, idempotencyKey)
+        ?: return ConversationInsert.AlreadyExists(findExisting(idempotencyKey))
+    insertOutbox(inserted)
+    return ConversationInsert.Inserted(inserted)
 }
 
 private fun ConversationRow.toDomain() = Conversation(

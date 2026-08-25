@@ -10,6 +10,14 @@ import com.aiassistant.server.application.conversation.cache.RedisStringStore
 import com.aiassistant.server.application.conversation.domain.ConversationCache
 import com.aiassistant.server.application.conversation.domain.ConversationRepository
 import com.aiassistant.server.application.conversation.repository.ConversationRepositoryImpl
+import com.aiassistant.server.application.outbox.EventPublisher
+import com.aiassistant.server.application.outbox.KafkaEventPublisher
+import com.aiassistant.server.application.outbox.KafkaFactory
+import com.aiassistant.server.application.outbox.KafkaMessageSender
+import com.aiassistant.server.application.outbox.OutboxPublisher
+import com.aiassistant.server.application.outbox.OutboxPublisherWorker
+import com.aiassistant.server.application.outbox.OutboxRepository
+import com.aiassistant.server.application.outbox.repository.OutboxRepositoryImpl
 import com.aiassistant.server.core.AppConfig
 import com.aiassistant.server.db.DatabaseFactory
 import io.ktor.server.application.Application
@@ -27,9 +35,19 @@ val dbModule = module {
 }
 
 val conversationModule = module {
-    single<ConversationRepository> { ConversationRepositoryImpl() }
+    single<OutboxRepository> { OutboxRepositoryImpl() }
+    single<ConversationRepository> { ConversationRepositoryImpl(get()) }
     single<RedisStringStore> { RedisFactory.createStore() }
     single<ConversationCache> { RedisConversationCache(get()) }
+    single<KafkaMessageSender> { KafkaFactory.createSender() }
+    single<EventPublisher> {
+        KafkaEventPublisher(
+            sender = get(),
+            topic = AppConfig.kafkaConversationEventsTopic,
+        )
+    }
+    single { OutboxPublisher(get(), get()) }
+    single { OutboxPublisherWorker(get()) }
     factory { CreateConversationUseCase(get()) }
     factory { GetConversationUseCase(get(), get()) }
     factory { ListConversationsUseCase(get()) }

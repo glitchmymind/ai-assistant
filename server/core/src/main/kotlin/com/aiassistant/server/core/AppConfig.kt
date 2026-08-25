@@ -25,6 +25,11 @@ object AppConfig {
     val redisHost: String by lazy { env("REDIS_HOST", "localhost") }
     val redisPort: Int by lazy { env("REDIS_PORT", "6379").toInt() }
 
+    val kafkaBootstrapServers: String by lazy { env("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092") }
+    val kafkaConversationEventsTopic: String by lazy {
+        env("KAFKA_CONVERSATION_EVENTS_TOPIC", "conversation-events")
+    }
+
     private fun env(key: String, default: String): String {
         return System.getenv(key) ?: fileValues[key] ?: default
     }

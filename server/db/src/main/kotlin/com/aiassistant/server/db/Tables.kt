@@ -33,3 +33,16 @@ object Messages : Table("messages") {
 
     override val primaryKey = PrimaryKey(id)
 }
+
+object OutboxEvents : Table("outbox_events") {
+    val id = uuid("id").databaseGenerated()
+    val aggregateType = varchar("aggregate_type", 100)
+    val aggregateId = uuid("aggregate_id")
+    val eventType = varchar("event_type", 150)
+    val eventVersion = integer("event_version")
+    val payload = jsonb("payload")
+    val createdAt = timestampWithTimeZone("created_at").databaseGenerated()
+    val publishedAt = timestampWithTimeZone("published_at").nullable()
+
+    override val primaryKey = PrimaryKey(id)
+}
